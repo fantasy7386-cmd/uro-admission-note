@@ -58,16 +58,7 @@ body{font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;background:
 .gender-toggle{display:flex;gap:8px;justify-content:center;margin-bottom:10px;}
 .gender-toggle button{padding:5px 18px;border:1px solid #d2d2d7;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;font-weight:600;}
 .gender-toggle button.active{background:#0071e3;color:#fff;border-color:#0071e3;}
-
-.login-screen{display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f7;}
-.login-box{background:#fff;border-radius:12px;padding:40px;width:380px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;}
-.login-box h1{font-size:20px;margin-bottom:4px;}
-.login-box .credit{font-size:11px;color:#86868b;margin-bottom:20px;}
-.login-box input{width:100%;font-size:16px;padding:10px 14px;border:1px solid #d2d2d7;border-radius:8px;outline:none;margin-bottom:12px;text-align:center;}
-.login-box input:focus{border-color:#0071e3;}
-.login-box button{width:100%;font-size:15px;padding:10px;border:none;border-radius:8px;background:#0071e3;color:#fff;cursor:pointer;font-weight:600;}
-.login-box .error{color:#ff3b30;font-size:13px;margin-top:8px;display:none;}
-
+.login-screen{display:flex;justify-content:center;align-items:center;height:100vh;background:#f5f5f7;}.login-box{background:#fff;border-radius:12px;padding:40px;width:380px;box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center;}.login-box h1{font-size:20px;margin-bottom:4px;}.login-box .credit{font-size:11px;color:#86868b;margin-bottom:20px;}.login-box input{width:100%;font-size:16px;padding:10px 14px;border:1px solid #d2d2d7;border-radius:8px;outline:none;margin-bottom:12px;text-align:center;}.login-box input:focus{border-color:#0071e3;}.login-box button{width:100%;font-size:15px;padding:10px;border:none;border-radius:8px;background:#0071e3;color:#fff;cursor:pointer;font-weight:600;}.login-box .error{color:#ff3b30;font-size:13px;margin-top:8px;display:none;}
 </style>
 </head>
 <body>
@@ -204,7 +195,7 @@ function renderP(){var el=document.getElementById("procList");el.innerHTML="";va
 function selP(p){cP=p;cT='cc';savedEcho="";savedCysto="";savedLuts=[];document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab==='cc');});renderP();renderN();updBtns();}
 
 function updBtns(){
-  var hl=cP&&(cP.active_problems.indexOf('lower urinary tract symptoms')>=0||cP.active_problems.indexOf('LUTS')>=0);
+  var hl=cP&&(cP.active_problems.indexOf('lower urinary tract symptoms')>=0||cP.active_problems.indexOf('LUTS')>=0||cP.active_problems.indexOf('luts_chief_complaint')>=0||cP.chief_complaint.indexOf('luts')>=0||cP.present_illness.indexOf('luts_symptoms')>=0);
   document.getElementById('lutsBtn').style.display=hl?'inline-block':'none';
   // Echo and Cysto always visible when procedure selected and on hx/plan tab
   var showTools=cP&&(cT==='hx'||cT==='plan');
@@ -218,19 +209,34 @@ function updBtns(){
 function switchTab(t){cT=t;document.querySelectorAll('.tab').forEach(function(e){e.classList.toggle('active',e.dataset.tab===t);});document.getElementById("sectionTitle").textContent=TN[t]||"";renderN();updBtns();}
 
 function applyGlobalData(text){
-  // Apply saved echo findings
+  // Apply saved echo findings - try all possible placeholders
   if(savedEcho){
-    text=text.replace(/\{echo_findings\}/g,savedEcho);
-    text=text.replace(/\{renal_echo\}/g,savedEcho);
+    var echoReplaced=false;
+    if(text.indexOf('{echo_findings}')>=0){text=text.replace(/\{echo_findings\}/g,savedEcho);echoReplaced=true;}
+    if(text.indexOf('{renal_echo}')>=0){text=text.replace(/\{renal_echo\}/g,savedEcho);echoReplaced=true;}
+    if(text.indexOf('{imaging_findings}')>=0){text=text.replace(/\{imaging_findings\}/g,savedEcho);echoReplaced=true;}
+    if(text.indexOf('{followup_echo_findings}')>=0){text=text.replace(/\{followup_echo_findings\}/g,savedEcho);echoReplaced=true;}
+    // If no placeholder found but we have echo data, append with prefix
+    if(!echoReplaced && (cT==='hx'||cT==='plan')){
+      text=text+"\n\nRenal ultrasonography revealed "+savedEcho+".";
+    }
   }
-  // Apply saved cystoscopy findings
+  // Apply saved cystoscopy findings - try all possible placeholders
   if(savedCysto){
-    text=text.replace(/\{cystoscopy_findings\}/g,savedCysto);
-    text=text.replace(/\{last_cystoscopy_findings\}/g,savedCysto);
+    var cystoReplaced=false;
+    if(text.indexOf('{cystoscopy_findings}')>=0){text=text.replace(/\{cystoscopy_findings\}/g,savedCysto);cystoReplaced=true;}
+    if(text.indexOf('{last_cystoscopy_findings}')>=0){text=text.replace(/\{last_cystoscopy_findings\}/g,savedCysto);cystoReplaced=true;}
+    // If no placeholder found but we have cysto data, append with prefix
+    if(!cystoReplaced && (cT==='hx'||cT==='plan')){
+      text=text+"\n\nCystoscopy revealed "+savedCysto+".";
+    }
   }
-  // Apply LUTS
+  // Apply LUTS - replace all variations
   if(savedLuts.length>0){
-    text=text.replace(/lower urinary tract symptoms(\s*\([^)]*\))?/g,"lower urinary tract symptoms ("+savedLuts.join(", ")+")");
+    var lutsStr=savedLuts.join(", ");
+    text=text.replace(/lower urinary tract symptoms(\s*\([^)]*\))?/g,"lower urinary tract symptoms ("+lutsStr+")");
+    text=text.replace(/\{luts_chief_complaint\}/g,"lower urinary tract symptoms ("+lutsStr+")");
+    text=text.replace(/\{luts_symptoms\}/g,lutsStr);
   }
   return text;
 }
