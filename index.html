@@ -587,32 +587,31 @@ function openModal(id){
 function closeModal(id){document.getElementById(id).classList.remove("show");}
 
 // === Teaching Notes: fetch from Pocket PPu, fallback to hardcoded ===
-let _tnLoaded = false;
 function loadTeachingNotes(){
-  if(_tnLoaded) return;
   const container = document.getElementById('teachingNotesContent');
   const fallback = document.getElementById('teachingNotesFallback');
   const NOTES_URL = 'https://fantasy7386-cmd.github.io/pocket-ppu/teaching-notes.json';
   const CACHE_KEY = 'uro_teaching_notes_cache';
 
-  fetch(NOTES_URL)
+  // Always fetch fresh (cache-bust with timestamp)
+  fetch(NOTES_URL + '?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
       localStorage.setItem(CACHE_KEY, JSON.stringify(data));
       container.innerHTML = renderTeachingNotesHTML(data);
-      _tnLoaded = true;
+      // loaded
     })
     .catch(() => {
       const cached = localStorage.getItem(CACHE_KEY);
       if(cached){
         try{
           container.innerHTML = renderTeachingNotesHTML(JSON.parse(cached));
-          _tnLoaded = true;
+          // loaded
           return;
         }catch(e){}
       }
       container.innerHTML = fallback.innerHTML;
-      _tnLoaded = true;
+      // loaded
     });
 }
 
